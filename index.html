@@ -227,9 +227,12 @@ function parseSheetDate(s){
 }
 
 function csvRowsToMatches(rows){
+  // The sheet has a blank row above the real header row - skip any fully-blank leading row(s)
+  // so the actual header row gets correctly identified and stripped, not treated as data.
+  while(rows.length && rows[0].every(c => c === '')) rows.shift();
   const [header, ...data] = rows;
   return data
-    .filter(r => r[5])
+    .filter(r => r[5] && r[5] !== 'Home Team')  // extra safety net against a stray header row
     .map(r => ({
       matchId: parseInt(r[0]) || null,
       comp: r[1] || null,
