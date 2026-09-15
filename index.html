@@ -620,7 +620,7 @@ function renderJerseyStats(){
     </button>
     <div class="stats-body" id="stats-body" hidden>
       <table>
-        <thead><tr><th>Jersey</th><th>GP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>PTS</th></tr></thead>
+        <thead><tr><th>Jersey</th><th>GP</th><th>W</th><th>D</th><th>L</th><th>PF</th><th>PA</th><th>PD</th><th>PTS</th></tr></thead>
         <tbody>${rows.map(b => rowHtml(b, buckets[b], false)).join('')}${rowHtml('Total', total, true)}</tbody>
       </table>
     </div>`;
