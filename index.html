@@ -173,6 +173,11 @@
 
   <div id="browse-filters" class="filters">
     <select id="f-team" aria-label="Team"><option value="">Any team</option></select>
+    <select id="f-status" aria-label="Show results, fixtures, or all">
+      <option value="results">Results</option>
+      <option value="fixtures">Fixtures</option>
+      <option value="all">All</option>
+    </select>
     <select id="f-year" aria-label="Year"><option value="">Any year</option></select>
     <select id="f-jersey" aria-label="Jersey"><option value="">Any jersey</option></select>
     <select id="f-round" aria-label="Round"><option value="">Any round</option></select>
@@ -306,6 +311,7 @@ async function loadLiveData(){
     MATCHES = live;
     populateFacets();
     updateStatLine();
+    setDefaultStatus();
     applyFilters();
     const now = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
     statusEl.innerHTML = `<span style="color:var(--win)">&#9679;</span> Live data &mdash; updated ${now}`;
@@ -324,6 +330,7 @@ const modeH2hBtn = document.getElementById('mode-h2h');
 const browseFiltersEl = document.getElementById('browse-filters');
 const h2hFiltersEl = document.getElementById('h2h-filters');
 const fTeam = document.getElementById('f-team');
+const fStatus = document.getElementById('f-status');
 const fYear = document.getElementById('f-year');
 const fJersey = document.getElementById('f-jersey');
 const fRound = document.getElementById('f-round');
@@ -349,6 +356,10 @@ function fmtDate(d, short){
   return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}).toUpperCase();
 }
 function isPlayed(m){ return m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined; }
+// Default to Results if any games have been played yet, otherwise Fixtures (nothing to show in Results).
+function setDefaultStatus(){
+  fStatus.value = MATCHES.some(isPlayed) ? 'results' : 'fixtures';
+}
 function resultFor(m, side){
   if(!isPlayed(m)) return null;
   if(m.homeScore === m.awayScore) return 'draw';
@@ -472,6 +483,15 @@ function applyFilters(){
       return true;
     });
   }
+
+  // Results stay newest-first (rows is already sorted that way from MATCHES); fixtures need
+  // reversing to soonest-first; "all" shows results then fixtures as two distinct blocks.
+  const resultsBlock = rows.filter(isPlayed);
+  const fixturesBlock = rows.filter(m => !isPlayed(m)).reverse();
+  if(fStatus.value === 'results') rows = resultsBlock;
+  else if(fStatus.value === 'fixtures') rows = fixturesBlock;
+  else rows = resultsBlock.concat(fixturesBlock);
+
   filtered = rows;
   activeIndex = 0;
   if(filtered.length) renderMatchup(filtered[0]);
@@ -500,8 +520,10 @@ hideTrial.addEventListener('change', () => { populateFacets(); applyFilters(); }
 clearBtn.addEventListener('click', () => {
   [fTeam, fYear, fJersey, fRound, fTheme, fStadium, fRef].forEach(el => el.value = '');
   populateFacets();
+  setDefaultStatus();
   applyFilters();
 });
+fStatus.addEventListener('change', applyFilters);
 
 // ---------- rendering ----------
 function jerseySlot(team, jersey, img){
@@ -639,6 +661,7 @@ function renderJerseyStats(){
 // ---------- init ----------
 populateFacets();
 updateStatLine();
+setDefaultStatus();
 applyFilters();
 loadLiveData();
 
