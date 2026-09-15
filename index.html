@@ -368,13 +368,25 @@ function fillSelect(sel, values, placeholder){
   sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${v}">${v}</option>`).join('');
   if([...sel.options].some(o => o.value === cur)) sel.value = cur;
 }
+// When a team is selected, a jersey filter must match THAT team's own side, not whatever
+// the opponent wore that game - otherwise "Canberra + Indigenous" would include games where
+// Canberra wore something else but the other team happened to wear an Indigenous jersey.
+function matchesJerseyFilter(m){
+  if(!fJersey.value) return true;
+  if(fTeam.value){
+    if(m.home !== fTeam.value && m.away !== fTeam.value) return false;
+    const teamJersey = m.home === fTeam.value ? m.homeJersey : m.awayJersey;
+    return teamJersey === fJersey.value;
+  }
+  return m.homeJersey === fJersey.value || m.awayJersey === fJersey.value;
+}
 // Cross-filtering: each facet's own options are built from matches that satisfy every
 // OTHER active filter (so picking a team only leaves jerseys/years/etc it actually has).
 function facetPredicate(excludeKey){
   return function(m){
     if(excludeKey !== 'team' && fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
     if(excludeKey !== 'year' && fYear.value && String(m.year) !== fYear.value) return false;
-    if(excludeKey !== 'jersey' && fJersey.value && m.homeJersey !== fJersey.value && m.awayJersey !== fJersey.value) return false;
+    if(excludeKey !== 'jersey' && !matchesJerseyFilter(m)) return false;
     if(excludeKey !== 'round' && fRound.value && String(m.round) !== fRound.value) return false;
     if(excludeKey !== 'theme' && fTheme.value && m.theme !== fTheme.value) return false;
     if(excludeKey !== 'stadium' && fStadium.value && m.stadium !== fStadium.value) return false;
@@ -427,7 +439,7 @@ function applyFilters(){
     rows = MATCHES.filter(m => {
       if(fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
       if(fYear.value && String(m.year) !== fYear.value) return false;
-      if(fJersey.value && m.homeJersey !== fJersey.value && m.awayJersey !== fJersey.value) return false;
+      if(!matchesJerseyFilter(m)) return false;
       if(fRound.value && String(m.round) !== fRound.value) return false;
       if(fTheme.value && m.theme !== fTheme.value) return false;
       if(fStadium.value && m.stadium !== fStadium.value) return false;
