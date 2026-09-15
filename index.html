@@ -60,9 +60,11 @@
   }
   .filters select:focus, .h2h-row select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,75,0.15);}
   .vs-sep{font-family:'Anton',sans-serif;color:var(--text-dim);font-size:16px;}
-  .clear-row{display:flex;justify-content:flex-end;margin-bottom:20px;}
+  .clear-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
   .clear-row button{background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:11.5px;text-decoration:underline;cursor:pointer;padding:4px;}
   .clear-row button:hover{color:var(--accent);}
+  .trial-toggle{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);cursor:pointer;user-select:none;}
+  .trial-toggle input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
 
   .jersey-stats{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 20px 8px;margin-bottom:20px;}
   .stats-toggle{
@@ -108,7 +110,7 @@
   .notes-line{margin:8px 0 0;font-style:italic;color:var(--text-dim2);font-size:11px;}
 
   .list-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
-  .list-head, .row{display:grid;grid-template-columns:70px 78px 1fr 30px 12px 30px 1fr 78px 56px;gap:6px;align-items:center;}
+  .list-head, .row{display:grid;grid-template-columns:70px 96px 1fr 30px 12px 30px 1fr 96px 56px;gap:6px;align-items:center;}
   .list-head{padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--text-dim2);text-transform:uppercase;background:var(--surface);border-bottom:1px solid var(--line);}
   .list-head span:nth-child(3), .list-head span:nth-child(5){text-align:center;}
   .row{padding:9px 14px;background:var(--surface);border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;transition:background .12s ease;}
@@ -116,7 +118,7 @@
   .row:hover{background:var(--surface-2);}
   .row.active{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);}
   .row .c-date{font-family:'IBM Plex Mono',monospace;color:var(--text-dim);font-size:11px;white-space:nowrap;}
-  .jcode{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:2px 3px;text-align:center;cursor:help;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .jcode{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:3px 4px;text-align:center;cursor:help;white-space:normal;word-break:break-word;line-height:1.25;align-self:stretch;display:flex;align-items:center;justify-content:center;}
   .row .c-home{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
   .row .c-away{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
   .result-win{color:var(--win);}
@@ -185,7 +187,10 @@
     <select id="f-teamB" aria-label="Team B"></select>
   </div>
 
-  <div class="clear-row"><button id="clear-filters">Clear all filters</button></div>
+  <div class="clear-row">
+    <label class="trial-toggle"><input type="checkbox" id="hide-trial" checked> Hide trial matches</label>
+    <button id="clear-filters">Clear all filters</button>
+  </div>
 
   <section class="jersey-stats" id="jersey-stats" hidden></section>
 
@@ -193,7 +198,7 @@
 
   <section class="list-wrap">
     <div class="list-head">
-      <span>Date</span><span>Jsy</span><span style="text-align:right">Home</span><span>HS</span><span></span><span>AS</span><span>Away</span><span>Jsy</span><span style="text-align:center">Round</span>
+      <span>Date</span><span>Jersey</span><span style="text-align:right">Home</span><span>HS</span><span></span><span>AS</span><span>Away</span><span>Jersey</span><span style="text-align:center">Round</span>
     </div>
     <div class="list-scroll"><div id="list"></div></div>
   </section>
@@ -202,6 +207,7 @@
     <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim2);line-height:1.7;">
       A fan-made project tracking jerseys worn in NRL matches, 1998&ndash;present.<br>
       Not a store &mdash; no products are sold here. Not affiliated with the NRL or any club.<br>
+      Images may not reflect exactly what was worn on the field. It is merely a reference photo.<br>
       <a href="https://thejerseydatabase.com/contact.html" style="color:var(--accent);text-decoration:none;">Contact</a> &middot;
       <a href="https://thejerseydatabase.com/sources.html" style="color:var(--accent);text-decoration:none;">Sources</a> &middot;
       <a href="https://thejerseydatabase.com/updates.html" style="color:var(--accent);text-decoration:none;">Updates</a>
@@ -327,6 +333,10 @@ const fRef = document.getElementById('f-ref');
 const fTeamA = document.getElementById('f-teamA');
 const fTeamB = document.getElementById('f-teamB');
 const clearBtn = document.getElementById('clear-filters');
+const hideTrial = document.getElementById('hide-trial');
+
+// Trial matches are marked by putting "Trial" (no number needed) in the Round column.
+function isTrialMatch(m){ return normalizeText(m.round) === 'trial'; }
 
 let mode = 'browse';
 let filtered = [];
@@ -384,6 +394,7 @@ function matchesJerseyFilter(m){
 // OTHER active filter (so picking a team only leaves jerseys/years/etc it actually has).
 function facetPredicate(excludeKey){
   return function(m){
+    if(hideTrial.checked && isTrialMatch(m)) return false;
     if(excludeKey !== 'team' && fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
     if(excludeKey !== 'year' && fYear.value && String(m.year) !== fYear.value) return false;
     if(excludeKey !== 'jersey' && !matchesJerseyFilter(m)) return false;
@@ -437,6 +448,7 @@ function applyFilters(){
   let rows;
   if(mode === 'browse'){
     rows = MATCHES.filter(m => {
+      if(hideTrial.checked && isTrialMatch(m)) return false;
       if(fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
       if(fYear.value && String(m.year) !== fYear.value) return false;
       if(!matchesJerseyFilter(m)) return false;
@@ -451,6 +463,7 @@ function applyFilters(){
     rows = MATCHES.filter(m => (m.home === a && m.away === b) || (m.home === b && m.away === a));
     // secondary filters still apply on top of the head-to-head pairing
     rows = rows.filter(m => {
+      if(hideTrial.checked && isTrialMatch(m)) return false;
       if(fJersey.value && m.homeJersey !== fJersey.value && m.awayJersey !== fJersey.value) return false;
       if(fYear.value && String(m.year) !== fYear.value) return false;
       if(fStadium.value && m.stadium !== fStadium.value) return false;
@@ -482,6 +495,7 @@ modeH2hBtn.addEventListener('click', () => setMode('h2h'));
   el.addEventListener('change', () => { populateFacets(); applyFilters(); })
 );
 [fTeamA, fTeamB].forEach(el => el.addEventListener('change', applyFilters));
+hideTrial.addEventListener('change', () => { populateFacets(); applyFilters(); });
 
 clearBtn.addEventListener('click', () => {
   [fTeam, fYear, fJersey, fRound, fTheme, fStadium, fRef].forEach(el => el.value = '');
