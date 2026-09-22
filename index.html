@@ -54,11 +54,11 @@
 
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;}
   .h2h-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:12px;}
-  .filters select, .h2h-row select, .filters input{
+  .filters select, .h2h-row select, #f-h2h-year, .filters input{
     background:var(--surface);border:1px solid var(--line);color:var(--text);
     font-family:'Inter',sans-serif;font-size:13.5px;padding:10px 12px;border-radius:8px;outline:none;width:100%;
   }
-  .filters select:focus, .h2h-row select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,75,0.15);}
+  .filters select:focus, .h2h-row select:focus, #f-h2h-year:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,75,0.15);}
   .vs-sep{font-family:'Anton',sans-serif;color:var(--text-dim);font-size:16px;}
   /* Jersey filter: a checkbox dropdown instead of a plain select, so
      someone tracking (say) every Alternate a team's worn doesn't have to
