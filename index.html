@@ -229,6 +229,7 @@
 
   <div class="clear-row">
     <label class="trial-toggle"><input type="checkbox" id="hide-trial" checked> Hide trial matches</label>
+    <label class="trial-toggle" id="combine-renamed-label" title="Merges Bulldogs with Canterbury Bulldogs, Sharks with Cronulla Sharks, and Sydney City Roosters with Sydney Roosters for filtering and stats — match rows still show whatever name was actually entered for that game."><input type="checkbox" id="combine-renamed"> Combine renamed teams</label>
     <button id="clear-filters">Clear all filters</button>
   </div>
 
@@ -407,9 +408,28 @@ const fLadderYear = document.getElementById('f-ladder-year');
 const ladderTbody = document.getElementById('ladder-tbody');
 const ladderHeading = document.getElementById('ladder-heading');
 const hideTrial = document.getElementById('hide-trial');
+const combineRenamed = document.getElementById('combine-renamed');
 
 // Trial matches are marked by putting "Trial" (no number needed) in the Round column.
 function isTrialMatch(m){ return normalizeText(m.round) === 'trial'; }
+
+// A handful of clubs went by a different name for a stretch of years (still
+// the same franchise, just rebranded and back) — the sheet correctly keeps
+// each era's own name on its own matches, but that means without this,
+// "Canterbury Bulldogs" and "Bulldogs" show up as two unrelated teams with
+// nine years of history split off from each other. Maps the old-era name to
+// whatever the team's called today; only used for filtering/stats when the
+// checkbox is on — match rows always keep showing the actual name entered.
+const TEAM_ALIASES = {
+  'Bulldogs': 'Canterbury Bulldogs',
+  'Sharks': 'Cronulla Sharks',
+  'Sydney City Roosters': 'Sydney Roosters'
+};
+function teamKey(name){
+  if(!name) return name;
+  return (combineRenamed.checked && TEAM_ALIASES[name]) ? TEAM_ALIASES[name] : name;
+}
+function teamsEqual(a, b){ return !!a && !!b && teamKey(a) === teamKey(b); }
 
 let mode = 'browse';
 let filtered = [];
@@ -479,8 +499,8 @@ function fillSelect(sel, values, placeholder){
 function matchesJerseyFilter(m){
   if(!selectedJerseys.size) return true;
   if(fTeam.value){
-    if(m.home !== fTeam.value && m.away !== fTeam.value) return false;
-    const teamJersey = m.home === fTeam.value ? m.homeJersey : m.awayJersey;
+    if(!teamsEqual(m.home, fTeam.value) && !teamsEqual(m.away, fTeam.value)) return false;
+    const teamJersey = teamsEqual(m.home, fTeam.value) ? m.homeJersey : m.awayJersey;
     return selectedJerseys.has(teamJersey);
   }
   return selectedJerseys.has(m.homeJersey) || selectedJerseys.has(m.awayJersey);
@@ -549,7 +569,7 @@ document.addEventListener('click', e => {
 function facetPredicate(excludeKey){
   return function(m){
     if(hideTrial.checked && isTrialMatch(m)) return false;
-    if(excludeKey !== 'team' && fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
+    if(excludeKey !== 'team' && fTeam.value && !teamsEqual(m.home, fTeam.value) && !teamsEqual(m.away, fTeam.value)) return false;
     if(excludeKey !== 'year' && fYear.value && String(m.year) !== fYear.value) return false;
     if(excludeKey !== 'jersey' && !matchesJerseyFilter(m)) return false;
     if(excludeKey !== 'round' && fRound.value && String(m.round) !== fRound.value) return false;
@@ -560,7 +580,7 @@ function facetPredicate(excludeKey){
   };
 }
 function populateFacets(){
-  const teams = uniqueSorted(MATCHES, m => m.home).concat(uniqueSorted(MATCHES, m => m.away));
+  const teams = uniqueSorted(MATCHES, m => teamKey(m.home)).concat(uniqueSorted(MATCHES, m => teamKey(m.away)));
   const teamList = [...new Set(teams)].sort();
   fillSelect(fTeam, teamList, 'Any team');
 
@@ -571,7 +591,7 @@ function populateFacets(){
   const jerseyScope = MATCHES.filter(facetPredicate('jersey'));
   const jerseyTeam = fTeam.value;
   const jerseys = [...new Set(jerseyScope.flatMap(m => {
-    if(jerseyTeam) return [m.home === jerseyTeam ? m.homeJersey : null, m.away === jerseyTeam ? m.awayJersey : null];
+    if(jerseyTeam) return [teamsEqual(m.home, jerseyTeam) ? m.homeJersey : null, teamsEqual(m.away, jerseyTeam) ? m.awayJersey : null];
     return [m.homeJersey, m.awayJersey];
   }).filter(Boolean))];
   fillJerseyOptions(sortJerseyNames(jerseys));
@@ -606,7 +626,7 @@ function applyFilters(){
   if(mode === 'browse'){
     rows = MATCHES.filter(m => {
       if(hideTrial.checked && isTrialMatch(m)) return false;
-      if(fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
+      if(fTeam.value && !teamsEqual(m.home, fTeam.value) && !teamsEqual(m.away, fTeam.value)) return false;
       if(fYear.value && String(m.year) !== fYear.value) return false;
       if(!matchesJerseyFilter(m)) return false;
       if(fRound.value && String(m.round) !== fRound.value) return false;
@@ -617,7 +637,7 @@ function applyFilters(){
     });
   } else {
     const a = fTeamA.value, b = fTeamB.value;
-    rows = MATCHES.filter(m => (m.home === a && m.away === b) || (m.home === b && m.away === a));
+    rows = MATCHES.filter(m => (teamsEqual(m.home, a) && teamsEqual(m.away, b)) || (teamsEqual(m.home, b) && teamsEqual(m.away, a)));
     // secondary filters still apply on top of the head-to-head pairing
     rows = rows.filter(m => {
       if(hideTrial.checked && isTrialMatch(m)) return false;
@@ -663,6 +683,7 @@ modeH2hBtn.addEventListener('click', () => setMode('h2h'));
 );
 [fTeamA, fTeamB].forEach(el => el.addEventListener('change', () => { applyFilters(); renderJerseyLadder(); }));
 hideTrial.addEventListener('change', () => { populateFacets(); applyFilters(); });
+combineRenamed.addEventListener('change', () => { populateFacets(); applyFilters(); });
 
 clearBtn.addEventListener('click', () => {
   [fTeam, fYear, fRound, fTheme, fStadium, fRef].forEach(el => el.value = '');
@@ -756,7 +777,7 @@ function renderJerseyLadder(){
   let rows = MATCHES.filter(m => isPlayed(m) && (!yr || String(m.year) === yr));
   if(mode === 'h2h'){
     const a = fTeamA.value, b = fTeamB.value;
-    rows = rows.filter(m => (m.home === a && m.away === b) || (m.home === b && m.away === a));
+    rows = rows.filter(m => (teamsEqual(m.home, a) && teamsEqual(m.away, b)) || (teamsEqual(m.home, b) && teamsEqual(m.away, a)));
     ladderHeading.textContent = 'Jersey Ladder \u2014 ' + a + ' vs ' + b;
   } else {
     ladderHeading.textContent = 'Jersey Ladder \u2014 All Teams';
@@ -772,8 +793,8 @@ function renderJerseyLadder(){
     else b.d++;
   }
   rows.forEach(m => {
-    bump(m.home, m.homeJersey, m.homeScore, m.awayScore, resultFor(m, 'home'));
-    bump(m.away, m.awayJersey, m.awayScore, m.homeScore, resultFor(m, 'away'));
+    bump(teamKey(m.home), m.homeJersey, m.homeScore, m.awayScore, resultFor(m, 'home'));
+    bump(teamKey(m.away), m.awayJersey, m.awayScore, m.homeScore, resultFor(m, 'away'));
   });
 
   const list = Object.values(buckets).map(b => {
@@ -805,10 +826,10 @@ function renderJerseyStats(){
   const team = mode === 'browse' ? fTeam.value : null;
   if(!team){ statsEl.hidden = true; statsEl.innerHTML = ''; return; }
 
-  const teamMatches = MATCHES.filter(m => (m.home === team || m.away === team) && isPlayed(m) && (!fYear.value || String(m.year) === fYear.value));
+  const teamMatches = MATCHES.filter(m => (teamsEqual(m.home, team) || teamsEqual(m.away, team)) && isPlayed(m) && (!fYear.value || String(m.year) === fYear.value));
   const buckets = {};
   teamMatches.forEach(m => {
-    const isHome = m.home === team;
+    const isHome = teamsEqual(m.home, team);
     const jersey = (isHome ? m.homeJersey : m.awayJersey) || 'Unknown';
     if(!buckets[jersey]) buckets[jersey] = {gp:0,w:0,d:0,l:0,gf:0,ga:0};
     const gf = isHome ? m.homeScore : m.awayScore;
