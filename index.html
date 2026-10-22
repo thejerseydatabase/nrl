@@ -295,20 +295,6 @@
     </div>
   </section>
 
-  <section class="jersey-stats" id="winrate-box">
-    <button class="stats-toggle" id="winrate-toggle" aria-expanded="false">
-      <span id="winrate-heading">Win % by Jersey Type — All Teams</span><i class="ti ti-chevron-down"></i>
-    </button>
-    <div class="stats-body" id="winrate-body" hidden>
-      <div class="list-scroll" style="max-height:320px;">
-        <table>
-          <thead><tr><th style="text-align:left">Jersey</th><th>Worn</th><th>W</th><th>D</th><th>L</th><th>Win%</th></tr></thead>
-          <tbody id="winrate-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
   <section class="jersey-stats" id="jersey-stats" hidden></section>
 
   <section class="matchup" id="matchup"></section>
@@ -619,10 +605,6 @@ const ladderBody = document.getElementById('ladder-body');
 const fLadderYear = document.getElementById('f-ladder-year');
 const ladderTbody = document.getElementById('ladder-tbody');
 const ladderHeading = document.getElementById('ladder-heading');
-const winrateToggle = document.getElementById('winrate-toggle');
-const winrateBody = document.getElementById('winrate-body');
-const winrateTbody = document.getElementById('winrate-tbody');
-const winrateHeading = document.getElementById('winrate-heading');
 const hideTrial = document.getElementById('hide-trial');
 const combineRenamed = document.getElementById('combine-renamed');
 
@@ -1077,34 +1059,6 @@ function renderList(){
 // A ladder entry is one team's stint in one jersey - e.g. "Penrith - Home" - ranked the same
 // way a competition ladder is: points first, then points difference, wins, games played,
 // then points for.
-function renderJerseyWinRate(rows, headingSuffix){
-  winrateHeading.textContent = 'Win % by Jersey Type \u2014 ' + headingSuffix;
-  const buckets = {};
-  function bump(jersey, result){
-    const key = jersey || 'Unknown';
-    if(!buckets[key]) buckets[key] = {jersey: key, gp:0,w:0,d:0,l:0};
-    const b = buckets[key];
-    b.gp++;
-    if(result === 'win') b.w++;
-    else if(result === 'loss') b.l++;
-    else b.d++;
-  }
-  rows.forEach(m => {
-    bump(m.homeJersey, resultFor(m, 'home'));
-    bump(m.awayJersey, resultFor(m, 'away'));
-  });
-  const list = sortJerseyNames(Object.keys(buckets)).map(k => buckets[k]);
-  if(list.length === 0){
-    winrateTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:16px;">No results for this selection.</td></tr>`;
-    return;
-  }
-  winrateTbody.innerHTML = list.map(r => `
-    <tr>
-      <td style="text-align:left">${r.jersey}</td>
-      <td>${r.gp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
-      <td>${r.gp ? (r.w / r.gp * 100).toFixed(1) : '0.0'}%</td>
-    </tr>`).join('');
-}
 function renderJerseyLadder(){
   const yr = fLadderYear.value;
   let rows = MATCHES.filter(m => isPlayed(m) && (!yr || String(m.year) === yr));
@@ -1112,10 +1066,8 @@ function renderJerseyLadder(){
     const a = fTeamA.value, b = fTeamB.value;
     rows = rows.filter(m => (teamsEqual(m.home, a) && teamsEqual(m.away, b)) || (teamsEqual(m.home, b) && teamsEqual(m.away, a)));
     ladderHeading.textContent = 'Jersey Ladder \u2014 ' + a + ' vs ' + b;
-    renderJerseyWinRate(rows, a + ' vs ' + b);
   } else {
     ladderHeading.textContent = 'Jersey Ladder \u2014 All Teams';
-    renderJerseyWinRate(rows, 'All Teams');
   }
   const buckets = {};
   function bump(team, jersey, gf, ga, result){
@@ -1222,12 +1174,6 @@ ladderToggle.addEventListener('click', () => {
   ladderBody.hidden = open;
   ladderToggle.setAttribute('aria-expanded', String(!open));
   ladderToggle.classList.toggle('open', !open);
-});
-winrateToggle.addEventListener('click', () => {
-  const open = !winrateBody.hidden;
-  winrateBody.hidden = open;
-  winrateToggle.setAttribute('aria-expanded', String(!open));
-  winrateToggle.classList.toggle('open', !open);
 });
 fLadderYear.addEventListener('change', renderJerseyLadder);
 
